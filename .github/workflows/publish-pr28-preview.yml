@@ -1,4 +1,5 @@
 name: Publish PR28 Preview
+# one-shot authorized preview publisher
 
 on:
   push:
