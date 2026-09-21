@@ -43,7 +43,7 @@ jobs:
           expected = {
               "sourceRepository": "fiverocks-dev/text-vs-color",
               "sourceCommit": "4a3b5ec843551cf4bafc8ac1031e04816eaec593",
-              "pullRequest": 28,
+              "pullRequest": 36,
               "previewPath": "/preview/pr-36/",
           }
           for key, value in expected.items():
@@ -93,5 +93,5 @@ jobs:
         run: |
           git config user.name "fiverocks-preview-publisher"
           git config user.email "163599746+fiverocksgames@users.noreply.github.com"
-          git commit -m "preview: fiverocks-dev/text-vs-color#28@$SOURCE_SHA"
+          git commit -m "preview: fiverocks-dev/text-vs-color#36@$SOURCE_SHA"
           git push origin HEAD:main
