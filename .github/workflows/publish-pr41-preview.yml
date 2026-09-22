@@ -1,0 +1,97 @@
+name: Publish PR41 Preview
+# one-shot authorized preview publisher
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-pr41-preview.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish verified PR41 static artifact
+    runs-on: ubuntu-latest
+    env:
+      ARTIFACT_URL: "https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-08fc-8206-af4a-5187389b7b4c/raw?se=2026-09-22T00%3A37%3A54Z&sp=r&sv=2026-02-06&sr=b&scid=93551020-0083-5f7b-b652-853d0e7c5d42&skoid=fe2e0858-51c5-47e9-acb7-46ebb9a0f396&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-21T23%3A58%3A40Z&ske=2026-09-22T23%3A58%3A40Z&sks=b&skv=2026-02-06&sig=UQzcYOL5W89CAbQK9fNkEgPdDsSbn/9x9q0zaTmqZuU%3D"
+      ARTIFACT_SHA256: "bad5b8f2f31fd0c8dd126882cd12faa1be987edd6a6096581f5e33ec3fd60919"
+      SOURCE_SHA: "7088c3ff5523502bac202af50aed04a09a46a44c"
+      PREVIEW_DIR: "preview/pr-41"
+    steps:
+      - name: Check out public deployment repository
+        uses: actions/checkout@v4
+
+      - name: Download verified source artifact
+        run: |
+          curl -L --fail --silent --show-error "$ARTIFACT_URL" -o /tmp/pr41.zip
+          echo "$ARTIFACT_SHA256  /tmp/pr41.zip" | sha256sum -c -
+
+      - name: Validate provenance and file hashes
+        run: |
+          rm -rf /tmp/pr41
+          mkdir -p /tmp/pr41
+          unzip -q /tmp/pr41.zip -d /tmp/pr41
+          python3 - <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path("/tmp/pr41")
+          provenance_path = root / "DEPLOYMENT_PROVENANCE.json"
+          if not provenance_path.is_file():
+              raise SystemExit("missing DEPLOYMENT_PROVENANCE.json")
+          provenance = json.loads(provenance_path.read_text(encoding="utf-8-sig"))
+          expected = {
+              "sourceRepository": "fiverocks-dev/text-vs-color",
+              "sourceCommit": "7088c3ff5523502bac202af50aed04a09a46a44c",
+              "pullRequest": 41,
+              "previewPath": "/preview/pr-41/",
+          }
+          for key, value in expected.items():
+              if provenance.get(key) != value:
+                  raise SystemExit(f"provenance mismatch for {key}: {provenance.get(key)!r}")
+          declared = {}
+          for entry in provenance.get("files", []):
+              rel = entry["path"]
+              if rel.startswith("/") or ".." in pathlib.PurePosixPath(rel).parts:
+                  raise SystemExit(f"unsafe path: {rel}")
+              declared[rel] = entry["sha256"]
+          actual = {}
+          for path in root.rglob("*"):
+              if path.is_file() and path.name != "DEPLOYMENT_PROVENANCE.json":
+                  rel = path.relative_to(root).as_posix()
+                  if rel.endswith(".map"):
+                      raise SystemExit(f"source map prohibited: {rel}")
+                  actual[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+          if actual != declared:
+              raise SystemExit(f"artifact file/hash mismatch: declared={declared} actual={actual}")
+          required = {"index.html", "assets/index-Bt6Xc8v2.css", "assets/index-ZHSDOuu-.js"}
+          if set(actual) != required:
+              raise SystemExit(f"unexpected deployable tree: {sorted(actual)}")
+          print("Verified exact-SHA artifact and provenance")
+          PY
+
+      - name: Stage isolated preview subtree
+        run: |
+          rm -rf "$PREVIEW_DIR"
+          mkdir -p "$PREVIEW_DIR"
+          cp -a /tmp/pr41/. "$PREVIEW_DIR/"
+          git add "$PREVIEW_DIR"
+          python3 - <<'PY'
+          import subprocess
+          changed = subprocess.check_output(
+              ["git", "diff", "--cached", "--name-only"], text=True
+          ).splitlines()
+          if not changed:
+              raise SystemExit("no preview changes staged")
+          bad = [p for p in changed if not p.startswith("preview/pr-41/")]
+          if bad:
+              raise SystemExit(f"staged diff escaped preview subtree: {bad}")
+          print("\n".join(changed))
+          PY
+
+      - name: Publish preview
+        run: |
+          git config user.name "fiverocks-preview-publisher"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git commit -m "preview: fiverocks-dev/text-vs-color#41@$SOURCE_SHA"
+          git push origin HEAD:main
