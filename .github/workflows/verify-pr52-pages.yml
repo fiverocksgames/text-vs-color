@@ -1,0 +1,55 @@
+name: Verify PR52 Pages
+# one-shot post-publication URL verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-pr52-pages.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out public repository
+        uses: actions/checkout@v4
+
+      - name: Verify published PR52 URL and provenance
+        run: |
+          set -euo pipefail
+          BASE="https://fiverocksgames.github.io/text-vs-color/preview/pr-52"
+          ok=0
+          for i in $(seq 1 12); do
+            if curl -L --fail --silent --show-error "$BASE/" -o /tmp/index.html &&                curl -L --fail --silent --show-error "$BASE/DEPLOYMENT_PROVENANCE.json" -o /tmp/provenance.json; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ok" = 1
+          python3 - <<'PY'
+          import json, pathlib
+          html = pathlib.Path('/tmp/index.html').read_text(encoding='utf-8')
+          p = json.loads(pathlib.Path('/tmp/provenance.json').read_text(encoding='utf-8-sig'))
+          assert '/text-vs-color/preview/pr-52/assets/index-ClIpZGu8.js' in html
+          assert '/text-vs-color/preview/pr-52/assets/index-BxilAdR_.css' in html
+          assert p['sourceRepository'] == 'fiverocks-dev/text-vs-color'
+          assert p['sourceCommit'] == '06c033e69f0c8bab19f78264f45d46f6a307adac'
+          assert p['pullRequest'] == 52
+          assert p['previewPath'] == '/preview/pr-52/'
+          assert str(p['buildRunId']) == '36138838095'
+          print('PR52 Pages URL and provenance verified')
+          PY
+
+      - name: Record verification evidence
+        run: |
+          mkdir -p ops
+          printf '{"url":"https://fiverocksgames.github.io/text-vs-color/preview/pr-52/","sourceCommit":"06c033e69f0c8bab19f78264f45d46f6a307adac","buildRunId":"36138838095","verificationRunId":"%s"}\n' "$GITHUB_RUN_ID" > ops/pr52-pages-verified.json
+          git add ops/pr52-pages-verified.json
+          git config user.name "fiverocks-preview-verifier"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git commit -m "ops: verify PR52 Pages preview URL"
+          git push origin HEAD:main
