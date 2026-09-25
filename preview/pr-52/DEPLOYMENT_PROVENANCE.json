@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "sourceRepository": "fiverocks-dev/text-vs-color",
+  "sourceCommit": "06c033e69f0c8bab19f78264f45d46f6a307adac",
+  "pullRequest": 52,
+  "previewPath": "/preview/pr-52/",
+  "buildWorkflow": "PR52 Preview Artifact",
+  "buildRunId": "36138838095",
+  "builtAt": "2026-09-25T13:06:48.305Z",
+  "toolchain": "Node 24 / Vite 8.3.0",
+  "files": [
+    {
+      "path": "assets/index-BxilAdR_.css",
+      "sha256": "d94375997770e26629ffa2e975df0f03bcaad88fd234870a433ba549d6c8c32d"
+    },
+    {
+      "path": "assets/index-ClIpZGu8.js",
+      "sha256": "e9779ad5464601d6f697c773f152612245c9956fd8e2a61b973acd66de958c29"
+    },
+    {
+      "path": "index.html",
+      "sha256": "945399a1a4d2c7f1430410817825cd814e07a434064b90318b4fb90cf7f0bef7"
+    }
+  ]
+}
