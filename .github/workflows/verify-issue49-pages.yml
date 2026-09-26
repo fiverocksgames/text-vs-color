@@ -1,0 +1,43 @@
+name: Verify Issue49 Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-issue49-pages.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify published Pages
+        run: |
+          set -euo pipefail
+          base='https://fiverocksgames.github.io/text-vs-color/preview/issue-49/'
+          for i in $(seq 1 20); do
+            if curl -L --fail --silent --show-error "$base" -o /tmp/index.html; then break; fi
+            sleep 3
+          done
+          curl -L --fail --silent --show-error "${base}DEPLOYMENT_PROVENANCE.json" -o /tmp/p.json
+          grep -q '/text-vs-color/preview/issue-49/assets/index-Bh6BH2yX.js' /tmp/index.html
+          grep -q '/text-vs-color/preview/issue-49/assets/index-BxilAdR_.css' /tmp/index.html
+          python3 - <<'PY'
+          import json
+          p=json.load(open('/tmp/p.json'))
+          assert p['sourceCommit']=='c727ed8767fc26569d8e6735456690a24f1f79d2'
+          assert p['buildRunId']=='36225672623'
+          assert p['previewPath']=='/preview/issue-49/'
+          PY
+      - name: Record verified marker
+        run: |
+          mkdir -p ops
+          printf '{"url":"https://fiverocksgames.github.io/text-vs-color/preview/issue-49/","sourceCommit":"c727ed8767fc26569d8e6735456690a24f1f79d2","buildRunId":"36225672623","verificationRunId":"%s"}\n' "$GITHUB_RUN_ID" > ops/issue49-pages-verified.json
+          git add ops/issue49-pages-verified.json
+          git config user.name "fiverocks-preview-verifier"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git commit -m "ops: verify Issue 49 Pages preview"
+          git push origin HEAD:main
