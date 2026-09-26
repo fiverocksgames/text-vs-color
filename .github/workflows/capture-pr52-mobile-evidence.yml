@@ -42,7 +42,7 @@ jobs:
         id: capture
         run: |
           mkdir -p evidence
-          cat > /tmp/capture.mjs <<'JS'
+          cat > capture.mjs <<'JS'
           import { chromium } from 'playwright'
           import fs from 'node:fs/promises'
 
@@ -145,7 +145,7 @@ jobs:
           await fs.writeFile('evidence/report.json', JSON.stringify(report, null, 2))
           console.log(JSON.stringify({ afterShortTutorialClipped: report.targets.after.shortTutorial.clipped, afterShortSprintClipped: report.targets.after.shortSprint.clipped }, null, 2))
           JS
-          node /tmp/capture.mjs
+          node capture.mjs
 
       - name: Upload screenshot evidence
         if: always()
