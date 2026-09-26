@@ -1,0 +1,170 @@
+name: Capture PR52 mobile evidence
+# one-shot screenshot/accessibility evidence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/capture-pr52-mobile-evidence.yml
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out public repository
+        uses: actions/checkout@v4
+
+      - name: Verify exact deployed sources
+        run: |
+          set -euo pipefail
+          curl -L --fail --silent --show-error https://fiverocksgames.github.io/text-vs-color/preview/DEPLOYMENT_PROVENANCE.json -o /tmp/base.json
+          curl -L --fail --silent --show-error https://fiverocksgames.github.io/text-vs-color/preview/pr-52/DEPLOYMENT_PROVENANCE.json -o /tmp/after.json
+          python3 - <<'PY'
+          import json
+          base=json.load(open('/tmp/base.json',encoding='utf-8-sig'))
+          after=json.load(open('/tmp/after.json',encoding='utf-8-sig'))
+          assert base['sourceCommit']=='333f71c94d9c6c12b96b426f64d7f9a743b75ff8', base
+          assert after['sourceCommit']=='06c033e69f0c8bab19f78264f45d46f6a307adac', after
+          assert after['pullRequest']==52, after
+          print('verified source identities')
+          PY
+
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Capture representative phone and short-phone evidence
+        run: |
+          mkdir -p evidence
+          cat > /tmp/capture.mjs <<'JS'
+          import { chromium } from 'playwright'
+          import fs from 'node:fs/promises'
+
+          const targets = [
+            { id: 'before', url: 'https://fiverocksgames.github.io/text-vs-color/preview/' },
+            { id: 'after', url: 'https://fiverocksgames.github.io/text-vs-color/preview/pr-52/' },
+          ]
+          const browser = await chromium.launch({ headless: true })
+          const report = {
+            browser: 'Chromium via Playwright 1.56.1',
+            representativeViewport: { width: 390, height: 844, deviceScaleFactor: 1 },
+            shortViewport: { width: 320, height: 568, deviceScaleFactor: 1 },
+            targets: {},
+          }
+
+          async function clipReport(page) {
+            return await page.evaluate(() => {
+              const sels = [
+                '.preview-header',
+                '.onboarding-screen',
+                '.tutorial-examples',
+                '.onboarding-actions',
+                '.sprint-hud',
+                '.instruction-card',
+                '.stroop-word',
+                '.feedback-slot',
+                '.answer-zone',
+                '.exit-action',
+              ]
+              const visible = sels.flatMap(selector =>
+                [...document.querySelectorAll(selector)]
+                  .filter(el => {
+                    const s = getComputedStyle(el)
+                    const r = el.getBoundingClientRect()
+                    return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0
+                  })
+                  .map(el => {
+                    const r = el.getBoundingClientRect()
+                    return {
+                      selector,
+                      top: Math.round(r.top * 10) / 10,
+                      bottom: Math.round(r.bottom * 10) / 10,
+                      left: Math.round(r.left * 10) / 10,
+                      right: Math.round(r.right * 10) / 10,
+                      clipped: r.top < -0.5 || r.left < -0.5 || r.bottom > innerHeight + 0.5 || r.right > innerWidth + 0.5,
+                    }
+                  })
+              )
+              return {
+                viewport: { width: innerWidth, height: innerHeight },
+                documentScroll: { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight },
+                clipped: visible.filter(x => x.clipped),
+                visible,
+              }
+            })
+          }
+
+          for (const target of targets) {
+            const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })
+            const page = await context.newPage()
+            await page.goto(target.url, { waitUntil: 'networkidle' })
+            await page.screenshot({ path: `evidence/${target.id}-start-390x844.png`, fullPage: true })
+
+            await page.getByRole('button', { name: '규칙 알아보기' }).click()
+            await page.screenshot({ path: `evidence/${target.id}-tutorial-390x844.png`, fullPage: true })
+
+            const tutorialText = await page.locator('.tutorial-screen').innerText()
+            await page.getByRole('button', { name: '60초 Sprint 시작' }).click()
+            await page.waitForTimeout(250)
+            await page.screenshot({ path: `evidence/${target.id}-sprint-390x844.png`, fullPage: true })
+
+            const a11y = await page.evaluate(() => ({
+              challengeLabel: document.querySelector('.challenge')?.getAttribute('aria-label'),
+              instructionLabel: document.querySelector('.instruction-card')?.getAttribute('aria-label'),
+              instructionText: document.querySelector('.instruction-card')?.textContent?.replace(/\s+/g, ' ').trim(),
+              answerZoneLabel: document.querySelector('.answer-zone')?.getAttribute('aria-label'),
+              answerLabels: [...document.querySelectorAll('.answer-button strong')].map(x => x.textContent),
+              indicatorAriaHidden: [...document.querySelectorAll('.answer-color-indicator')].every(x => x.getAttribute('aria-hidden') === 'true'),
+              feedbackLive: document.querySelector('.feedback-slot')?.getAttribute('aria-live'),
+            }))
+
+            await context.close()
+
+            const short = await browser.newContext({ viewport: { width: 320, height: 568 }, deviceScaleFactor: 1 })
+            const p2 = await short.newPage()
+            await p2.goto(target.url, { waitUntil: 'networkidle' })
+            await p2.getByRole('button', { name: '규칙 알아보기' }).click()
+            const shortTutorial = await clipReport(p2)
+            await p2.screenshot({ path: `evidence/${target.id}-tutorial-320x568.png`, fullPage: true })
+            await p2.getByRole('button', { name: '60초 Sprint 시작' }).click()
+            await p2.waitForTimeout(250)
+            const shortSprint = await clipReport(p2)
+            await p2.screenshot({ path: `evidence/${target.id}-sprint-320x568.png`, fullPage: true })
+            await short.close()
+
+            report.targets[target.id] = { url: target.url, tutorialText, a11y, shortTutorial, shortSprint }
+          }
+
+          await browser.close()
+          await fs.writeFile('evidence/report.json', JSON.stringify(report, null, 2))
+          if (report.targets.after.shortTutorial.clipped.length || report.targets.after.shortSprint.clipped.length) {
+            console.error(JSON.stringify(report.targets.after, null, 2))
+            process.exitCode = 2
+          }
+          JS
+          node /tmp/capture.mjs
+
+      - name: Upload screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-47-pr52-mobile-evidence
+          path: evidence/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Record run marker
+        if: success()
+        run: |
+          mkdir -p ops
+          printf '{"verificationRunId":"%s","base":"333f71c94d9c6c12b96b426f64d7f9a743b75ff8","after":"06c033e69f0c8bab19f78264f45d46f6a307adac","viewports":["390x844","320x568"]}\n' "$GITHUB_RUN_ID" > ops/pr52-mobile-evidence.json
+          git add ops/pr52-mobile-evidence.json
+          git config user.name "fiverocks-preview-verifier"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git commit -m "ops: record PR52 mobile evidence run"
+          git push origin HEAD:main
