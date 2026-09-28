@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
   "sourceRepository": "fiverocks-dev/text-vs-color",
-  "sourceCommit": "4abfd96421b42957ab6d1b2023c37fd7ba88e013",
+  "sourceCommit": "6b982281403710d523f5ab4adfc80912dee7331c",
   "pullRequest": 54,
   "issue": 49,
   "previewPath": "/preview/issue-49/",
-  "buildWorkflow": "Issue49 Alignment Preview Artifact",
-  "buildRunId": "36390197501",
-  "builtAt": "2026-09-28T07:10:41.253811+00:00",
+  "buildWorkflow": "Issue49 Symmetric HUD Preview Artifact",
+  "buildRunId": "36430147683",
+  "builtAt": "2026-09-28T13:39:46.316710+00:00",
   "toolchain": "Node 24 / Vite",
   "files": [
     {
-      "path": "assets/index-C80V3t26.js",
-      "sha256": "c9c2de9c7e74c782411b67c744fe9b7c9c66587bd3c3edfbbe01d2230e2f6dc3"
+      "path": "assets/index-7vtZp-SX.css",
+      "sha256": "98aee75ece3a7f83b347c44f7f1920cd24a22f568456cb53296917ab79466eda"
     },
     {
-      "path": "assets/index-CjL-Ozpk.css",
-      "sha256": "564de4e8d0f112e3c70e8db3237f6b0aa3ea01413c9ea47964d4cbbf0b774412"
+      "path": "assets/index-C6JJwoEh.js",
+      "sha256": "fda5397327079c67f4535fa5ba1ac0c4593e1d0387472b0363a282ec38305ac0"
     },
     {
       "path": "index.html",
-      "sha256": "1dd6f2788fb261f04a7d4fdfcfe85ca48cd8044c02c8da53be153ea208aca075"
+      "sha256": "a7f39111b58079ad5573085f53c611a424a776bf33f770ecaca2a2d752b44718"
     }
   ]
 }
