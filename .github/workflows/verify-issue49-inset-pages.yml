@@ -1,0 +1,41 @@
+name: Verify Issue49 inset-button Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-issue49-inset-pages.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify published Pages
+        run: |
+          set -euo pipefail
+          base='https://fiverocksgames.github.io/text-vs-color/preview/issue-49/'
+          for i in $(seq 1 20); do
+            if curl -L --fail --silent --show-error "$base" -o /tmp/index.html; then break; fi
+            sleep 3
+          done
+          curl -L --fail --silent --show-error "${base}DEPLOYMENT_PROVENANCE.json" -o /tmp/p.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('/tmp/p.json'))
+          assert p['sourceCommit']=='91264b8ff8a36d1e0fa7ad04db7d18697f194ab2'
+          assert p['pullRequest']==54 and p['issue']==49
+          assert p['buildRunId']=='36487438126'
+          PY
+      - name: Marker
+        run: |
+          mkdir -p ops
+          printf '{"sourceCommit":"91264b8ff8a36d1e0fa7ad04db7d18697f194ab2","verificationRunId":"%s"}\n' "$GITHUB_RUN_ID" > ops/issue49-inset-pages-verified.json
+          git add ops/issue49-inset-pages-verified.json
+          git config user.name "fiverocks-preview-verifier"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git commit -m "ops: verify Issue 49 inset-button preview"
+          git push origin HEAD:main
