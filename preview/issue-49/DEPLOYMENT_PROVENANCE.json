@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
   "sourceRepository": "fiverocks-dev/text-vs-color",
-  "sourceCommit": "e94d2468da2d8d4fbbd60ee6aa3a4cdc7d7a6720",
+  "sourceCommit": "91264b8ff8a36d1e0fa7ad04db7d18697f194ab2",
   "pullRequest": 54,
   "issue": 49,
   "previewPath": "/preview/issue-49/",
-  "buildWorkflow": "Issue49 Letterbox Preview Artifact",
-  "buildRunId": "36484973332",
-  "builtAt": "2026-09-28T21:16:43.217948+00:00",
+  "buildWorkflow": "Issue49 Inset Button Preview Artifact",
+  "buildRunId": "36487438126",
+  "builtAt": "2026-09-28T21:38:40.650279+00:00",
   "toolchain": "Node 24 / Vite",
   "files": [
     {
-      "path": "assets/index-BW158A-n.js",
+      "path": "assets/index-Cx6y736U.css",
+      "sha256": "59b16482cf1df2de584f997a287fefdf78b8a2353446f6317c27e772833871cc"
+    },
+    {
+      "path": "assets/index-OjNTMHtg.js",
       "sha256": "29e406664a82066afd9003147be13edf67452dbe83a1405e43df7ae07c94e499"
     },
     {
-      "path": "assets/index-CCJhJ8CS.css",
-      "sha256": "54ef14662d0dd45c4a8ab20a83fe273e5c4e823c67eca5b198c8a239f9d5d319"
-    },
-    {
       "path": "index.html",
-      "sha256": "dd238c010d8a752cfe3c89d155b652025580d35b795921b29718b8aa7925c78a"
+      "sha256": "fd16e8f22d2d0af0721b9cfa9b9c66d63eb41690371baef014ff21c82f0c1bae"
     }
   ]
 }
