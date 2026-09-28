@@ -1,0 +1,56 @@
+name: Publish Issue49 radial preview
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-issue49-radial-preview.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      ARTIFACT_URL: 'https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-edfc-8206-bb5c-4221b630f725/raw?se=2026-09-28T01%3A30%3A50Z&sp=r&sv=2026-02-06&sr=b&scid=e7df1386-2003-5592-a426-a9e2edb373aa&skoid=fe2e0858-51c5-47e9-acb7-46ebb9a0f396&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-28T00%3A41%3A54Z&ske=2026-09-29T00%3A41%3A54Z&sks=b&skv=2026-02-06&sig=MLPnYOeOqb/juwLbF4W/NzkOvwUCYVS2b7kr4OadBRY%3D'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify
+        run: |
+          set -euo pipefail
+          curl -L --fail --silent --show-error "$ARTIFACT_URL" -o /tmp/p.zip
+          echo "648880b81efcb49777a41fd33599dbe1ccc703e898cd8c91d33e4f318b7ae8f0  /tmp/p.zip" | sha256sum -c -
+          rm -rf /tmp/p && mkdir -p /tmp/p
+          unzip -q /tmp/p.zip -d /tmp/p
+          python3 - <<'PY'
+          import hashlib,json,os
+          root='/tmp/p'; p=json.load(open(root+'/DEPLOYMENT_PROVENANCE.json'))
+          assert p['sourceCommit']=='9dec50c03ff987bc37488bfb21f629c9844ded52'
+          assert p['pullRequest']==54 and p['issue']==49
+          assert p['previewPath']=='/preview/issue-49/'
+          assert p['buildRunId']=='36365899810'
+          exp={x['path']:x['sha256'] for x in p['files']}
+          act={}
+          for base,_,names in os.walk(root):
+            for name in names:
+              rel=os.path.relpath(os.path.join(base,name),root).replace(os.sep,'/')
+              if rel=='DEPLOYMENT_PROVENANCE.json': continue
+              with open(os.path.join(base,name),'rb') as f: act[rel]=hashlib.sha256(f.read()).hexdigest()
+          assert act==exp
+          PY
+      - name: Replace isolated subtree
+        run: |
+          rm -rf preview/issue-49
+          mkdir -p preview/issue-49
+          cp -R /tmp/p/. preview/issue-49/
+          git add preview/issue-49
+          python3 - <<'PY'
+          import subprocess
+          names=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
+          assert names and all(x.startswith('preview/issue-49/') for x in names),names
+          PY
+          git config user.name "fiverocks-preview-publisher"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git commit -m "preview: issue #49 radial at 9dec50c03ff987bc37488bfb21f629c9844ded52"
+          git push origin HEAD:main
