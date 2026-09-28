@@ -1,26 +1,26 @@
 {
   "schemaVersion": 1,
   "sourceRepository": "fiverocks-dev/text-vs-color",
-  "sourceCommit": "3118339a827e781e434cbfb8733530019c05f303",
+  "sourceCommit": "9dec50c03ff987bc37488bfb21f629c9844ded52",
   "pullRequest": 54,
   "issue": 49,
   "previewPath": "/preview/issue-49/",
-  "buildWorkflow": "Issue49 Pips Preview Artifact",
-  "buildRunId": "36340143414",
-  "builtAt": "2026-09-27T18:18:35.751513+00:00",
+  "buildWorkflow": "Issue49 Radial Preview Artifact",
+  "buildRunId": "36365899810",
+  "builtAt": "2026-09-28T01:25:33.573028+00:00",
   "toolchain": "Node 24 / Vite",
   "files": [
     {
-      "path": "assets/index-DftFplwd.css",
-      "sha256": "c094130c7aba5fcc4d1e565814b4f6201acda36ffa6cc0e413a320fe79d1c257"
+      "path": "assets/index-B0ubEEae.js",
+      "sha256": "5fa75f1ec66d7f50cc44956fa7880580792eddb2651dd5321d190465ad161f86"
     },
     {
-      "path": "assets/index-DowgLWPD.js",
-      "sha256": "41feef85b9ddd0b6ded17d47bd78cf7e33eaea2362bab4d16fe224e7884c76fc"
+      "path": "assets/index-DNP4d-1b.css",
+      "sha256": "04d31d52836788ba9b23e56caa48a8be49aa1ce1ac27ae045762f1873264948a"
     },
     {
       "path": "index.html",
-      "sha256": "50415760357672884d6e98551748456dc49bf11e6b764cdaf72016e65c32633a"
+      "sha256": "82adc851282d8b34227daea7028cccaae6d4540550a04abb801bb998e6610fb6"
     }
   ]
 }
