@@ -1,0 +1,70 @@
+name: Publish Issue51 playtest preview
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-issue51-playtest-preview.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      ARTIFACT_URL: 'https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-c2d4-8206-a45a-74b37c7f0a03/raw?se=2026-09-29T14%3A36%3A44Z&sp=r&sv=2026-02-06&sr=b&scid=9b4c22eb-be3e-5803-a6f1-dc64a3045182&skoid=fe2e0858-51c5-47e9-acb7-46ebb9a0f396&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-29T03%3A49%3A17Z&ske=2026-09-30T03%3A49%3A17Z&sks=b&skv=2026-02-06&sig=E0Suy5j8DsBCyqNTmzjaSCPgwo3QO615oVKi0mo7GeM%3D'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and verify exact artifact
+        run: |
+          set -euo pipefail
+          curl -L --fail --silent --show-error "$ARTIFACT_URL" -o /tmp/p.zip
+          echo "42f3f459d112c8adf3b2eea93173673fa92d25e5c2b3378ab43c0a6748e35217  /tmp/p.zip" | sha256sum -c -
+          rm -rf /tmp/p && mkdir -p /tmp/p
+          unzip -q /tmp/p.zip -d /tmp/p
+          python3 - <<'PY'
+          import hashlib,json,os
+          root='/tmp/p'
+          p=json.load(open(root+'/DEPLOYMENT_PROVENANCE.json'))
+          assert p['sourceRepository']=='fiverocks-dev/text-vs-color'
+          assert p['sourceCommit']=='0068e5794a1e37153f88b54230cb87cffecfc854'
+          assert p['issue']==51
+          assert p['channel']=='independent-alpha-playtest'
+          assert p['previewPath']=='/preview/issue-51/'
+          assert p['buildRunId']=='36583239819'
+          exp={x['path']:x['sha256'] for x in p['files']}
+          act={}
+          for base,_,names in os.walk(root):
+            for name in names:
+              rel=os.path.relpath(os.path.join(base,name),root).replace(os.sep,'/')
+              if rel=='DEPLOYMENT_PROVENANCE.json':
+                continue
+              with open(os.path.join(base,name),'rb') as f:
+                act[rel]=hashlib.sha256(f.read()).hexdigest()
+          assert act==exp,(act,exp)
+          forbidden=[]
+          for base,_,names in os.walk(root):
+            for name in names:
+              if name.endswith(('.map','.ts','.tsx')):
+                forbidden.append(os.path.relpath(os.path.join(base,name),root))
+          assert not forbidden,forbidden
+          PY
+
+      - name: Replace isolated playtest subtree only
+        run: |
+          set -euo pipefail
+          rm -rf preview/issue-51
+          mkdir -p preview/issue-51
+          cp -R /tmp/p/. preview/issue-51/
+          git add preview/issue-51
+          python3 - <<'PY'
+          import subprocess
+          names=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
+          assert names and all(x.startswith('preview/issue-51/') for x in names),names
+          PY
+          git config user.name "fiverocks-preview-publisher"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git commit -m "preview: issue #51 playtest at 0068e5794a1e37153f88b54230cb87cffecfc854"
+          git push origin HEAD:main
