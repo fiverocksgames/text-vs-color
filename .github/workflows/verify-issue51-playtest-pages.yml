@@ -1,0 +1,49 @@
+name: Verify Issue51 playtest Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-issue51-playtest-pages.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify published playtest preview
+        run: |
+          set -euo pipefail
+          base='https://fiverocksgames.github.io/text-vs-color/preview/issue-51/'
+          for i in $(seq 1 20); do
+            if curl -L --fail --silent --show-error "$base" -o /tmp/index.html; then
+              break
+            fi
+            sleep 3
+          done
+          curl -L --fail --silent --show-error "${base}DEPLOYMENT_PROVENANCE.json" -o /tmp/p.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('/tmp/p.json'))
+          assert p['sourceRepository']=='fiverocks-dev/text-vs-color'
+          assert p['sourceCommit']=='0068e5794a1e37153f88b54230cb87cffecfc854'
+          assert p['issue']==51
+          assert p['channel']=='independent-alpha-playtest'
+          assert p['buildRunId']=='36583239819'
+          assert p['previewPath']=='/preview/issue-51/'
+          PY
+          grep -q '/text-vs-color/preview/issue-51/assets/' /tmp/index.html
+
+      - name: Record temporary verification marker
+        run: |
+          mkdir -p ops
+          printf '{"url":"https://fiverocksgames.github.io/text-vs-color/preview/issue-51/","sourceCommit":"0068e5794a1e37153f88b54230cb87cffecfc854","buildRunId":"36583239819","verificationRunId":"%s"}\n' "$GITHUB_RUN_ID" > ops/issue51-playtest-pages-verified.json
+          git add ops/issue51-playtest-pages-verified.json
+          git config user.name "fiverocks-preview-verifier"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git commit -m "ops: verify Issue 51 playtest preview"
+          git push origin HEAD:main
