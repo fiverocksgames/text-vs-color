@@ -1,0 +1,59 @@
+name: Publish Issue66 round2 preview
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-issue66-round2-preview.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      ARTIFACT_URL: 'https://sdmntprkoreacentral.oaiusercontent.com/files/00000000-5c50-8206-8142-383b91f98cc5/raw?se=2026-09-30T06%3A14%3A12Z&sp=r&sv=2026-02-06&sr=b&scid=394818fe-35b9-5069-9ae2-9bc3a8ecdc2e&skoid=fe2e0858-51c5-47e9-acb7-46ebb9a0f396&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-30T00%3A05%3A01Z&ske=2026-10-01T00%3A05%3A01Z&sks=b&skv=2026-02-06&sig=t9rGFu6MA1Ta62VSJpkKfT5LKHUbD1z4deeQfRI8bew%3D'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify exact artifact
+        run: |
+          set -euo pipefail
+          curl -L --fail --silent --show-error "$ARTIFACT_URL" -o /tmp/p.zip
+          echo "77012a3abad2537556e9e8f0c714202d3cab27ba07dd910d8d09e68078c78788  /tmp/p.zip" | sha256sum -c -
+          rm -rf /tmp/p && mkdir -p /tmp/p
+          unzip -q /tmp/p.zip -d /tmp/p
+          python3 - <<'PY'
+          import hashlib,json,os
+          root='/tmp/p'
+          p=json.load(open(root+'/DEPLOYMENT_PROVENANCE.json'))
+          assert p['sourceRepository']=='fiverocks-dev/text-vs-color'
+          assert p['sourceCommit']=='3a80708437510f69a49e167053aaced37504d999'
+          assert p['pullRequest']==67 and p['issue']==66
+          assert p['buildRunId']=='36676733150'
+          assert p['previewPath']=='/preview/issue-66/'
+          exp={x['path']:x['sha256'] for x in p['files']}
+          act={}
+          for base,_,names in os.walk(root):
+            for name in names:
+              rel=os.path.relpath(os.path.join(base,name),root).replace(os.sep,'/')
+              if rel=='DEPLOYMENT_PROVENANCE.json': continue
+              with open(os.path.join(base,name),'rb') as f: act[rel]=hashlib.sha256(f.read()).hexdigest()
+          assert act==exp,(act,exp)
+          PY
+      - name: Replace isolated Issue66 subtree only
+        run: |
+          set -euo pipefail
+          rm -rf preview/issue-66
+          mkdir -p preview/issue-66
+          cp -R /tmp/p/. preview/issue-66/
+          git add preview/issue-66
+          python3 - <<'PY'
+          import subprocess
+          names=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
+          assert names and all(x.startswith('preview/issue-66/') for x in names),names
+          PY
+          git config user.name "fiverocks-preview-publisher"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git commit -m "preview: issue #66 round2 at 3a80708437510f69a49e167053aaced37504d999"
+          git push origin HEAD:main
