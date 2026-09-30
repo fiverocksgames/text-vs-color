@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "sourceRepository": "fiverocks-dev/text-vs-color",
+  "sourceCommit": "a59dc204cf04ef7572bedc374429effc53a75386",
+  "pullRequest": 67,
+  "issue": 66,
+  "channel": "human-pl-playtest-follow-up",
+  "previewPath": "/preview/issue-66/",
+  "buildWorkflow": "Issue66 Playtest Follow-up Preview Artifact",
+  "buildRunId": "36661733664",
+  "builtAt": "2026-09-30T02:51:33.080775+00:00",
+  "toolchain": "Node 24 / Vite",
+  "files": [
+    {
+      "path": "assets/index-C3EyQCSc.js",
+      "sha256": "e46ddbb3027a1884f56e0b69fa4220c1d32025f9302410966859c8375af6941e"
+    },
+    {
+      "path": "assets/index-CPQgDyd6.css",
+      "sha256": "c62fa3a47da8f485a23a4a4c3246079ab862175df0ef3db694766bc9868c1e2d"
+    },
+    {
+      "path": "index.html",
+      "sha256": "fc3586321699bbd73e8d768372f07a0a3a61683f57a5474da56a2c5bc617717b"
+    }
+  ]
+}
