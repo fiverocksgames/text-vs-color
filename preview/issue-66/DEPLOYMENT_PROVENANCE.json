@@ -1,27 +1,27 @@
 {
   "schemaVersion": 1,
   "sourceRepository": "fiverocks-dev/text-vs-color",
-  "sourceCommit": "3a80708437510f69a49e167053aaced37504d999",
+  "sourceCommit": "a30c22e7f593f1ae1de2d8b682eea9b3bf0d4e1a",
   "pullRequest": 67,
   "issue": 66,
-  "channel": "human-pl-playtest-follow-up-round2",
+  "channel": "human-pl-playtest-follow-up-round3",
   "previewPath": "/preview/issue-66/",
-  "buildWorkflow": "Issue66 Round2 Preview Artifact",
-  "buildRunId": "36676733150",
-  "builtAt": "2026-09-30T06:08:50.459592+00:00",
+  "buildWorkflow": "Issue66 Round3 Preview Artifact",
+  "buildRunId": "36786420932",
+  "builtAt": "2026-09-30T22:35:33.853911+00:00",
   "toolchain": "Node 24 / Vite",
   "files": [
     {
-      "path": "assets/index-BiNArHXG.css",
-      "sha256": "5c4a57d146e2d10481e6d27f8d146f3a47ab4b043cd9c4a114e2e92bf71faab4"
+      "path": "assets/index-Cvi2sw45.js",
+      "sha256": "d8a6597a5a9d88b674235258a148ee5e7f7524e189acded38ef738c3d75b345c"
     },
     {
-      "path": "assets/index-mAO16pL2.js",
-      "sha256": "ba320ff08635a38ea8be9b221cd85525fb65ee52a316689a19eba05c83f8ac05"
+      "path": "assets/index-GJpzOAvS.css",
+      "sha256": "8876963355f98a1af3d86d0b17892bfead76a80b64a7bf62124338195797efee"
     },
     {
       "path": "index.html",
-      "sha256": "f01fee35ef10fb67b3db3fd893b481c0c3f0e90385f3b149ea157baaab9bc5f6"
+      "sha256": "723ba1717b60cd4d6e43fbf67932c474620e2b04ad5f74116893eb303d078af3"
     }
   ]
 }
