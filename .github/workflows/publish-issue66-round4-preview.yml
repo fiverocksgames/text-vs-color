@@ -1,0 +1,59 @@
+name: Publish Issue66 round4 preview
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-issue66-round4-preview.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      ARTIFACT_URL: 'https://sdmntprjapaneast.oaiusercontent.com/files/00000000-6fb8-8209-8699-0d9a4c0b5df2/raw?se=2026-09-30T23%3A10%3A17Z&sp=r&sv=2026-02-06&sr=b&scid=35c6a4e7-534f-5760-b9bd-6b83d752efc4&skoid=fe2e0858-51c5-47e9-acb7-46ebb9a0f396&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-30T20%3A47%3A48Z&ske=2026-10-01T20%3A47%3A48Z&sks=b&skv=2026-02-06&sig=7Ew188fSEPVXRi1M4Yx0vxQPjooFeCCvrUjapYni7Zk%3D'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify exact artifact
+        run: |
+          set -euo pipefail
+          curl -L --fail --silent --show-error "$ARTIFACT_URL" -o /tmp/p.zip
+          echo "a8b67aaf402eecca27af279b64551e3f681e8a6b87c8788e87a22c5301c60d58  /tmp/p.zip" | sha256sum -c -
+          rm -rf /tmp/p && mkdir -p /tmp/p
+          unzip -q /tmp/p.zip -d /tmp/p
+          python3 - <<'PY'
+          import hashlib,json,os
+          root='/tmp/p'
+          p=json.load(open(root+'/DEPLOYMENT_PROVENANCE.json'))
+          assert p['sourceRepository']=='fiverocks-dev/text-vs-color'
+          assert p['sourceCommit']=='6936f685697d691390011b41dd4295a03325b38a'
+          assert p['pullRequest']==67 and p['issue']==66
+          assert p['buildRunId']=='36789152279'
+          assert p['previewPath']=='/preview/issue-66/'
+          exp={x['path']:x['sha256'] for x in p['files']}
+          act={}
+          for base,_,names in os.walk(root):
+            for name in names:
+              rel=os.path.relpath(os.path.join(base,name),root).replace(os.sep,'/')
+              if rel=='DEPLOYMENT_PROVENANCE.json': continue
+              with open(os.path.join(base,name),'rb') as f: act[rel]=hashlib.sha256(f.read()).hexdigest()
+          assert act==exp,(act,exp)
+          PY
+      - name: Replace isolated Issue66 subtree only
+        run: |
+          set -euo pipefail
+          rm -rf preview/issue-66
+          mkdir -p preview/issue-66
+          cp -R /tmp/p/. preview/issue-66/
+          git add preview/issue-66
+          python3 - <<'PY'
+          import subprocess
+          names=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
+          assert names and all(x.startswith('preview/issue-66/') for x in names),names
+          PY
+          git config user.name "fiverocks-preview-publisher"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git commit -m "preview: issue #66 round4 at 6936f685697d691390011b41dd4295a03325b38a"
+          git push origin HEAD:main
