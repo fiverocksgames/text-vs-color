@@ -14,26 +14,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify published preview
+      - name: Wait for exact published provenance
         run: |
           set -euo pipefail
           base='https://fiverocksgames.github.io/text-vs-color/preview/issue-66/'
-          for i in $(seq 1 20); do
-            if curl -L --fail --silent --show-error "$base" -o /tmp/index.html; then break; fi
+          matched=0
+          for i in $(seq 1 30); do
+            if curl -L --fail --silent --show-error "${base}DEPLOYMENT_PROVENANCE.json" -o /tmp/p.json; then
+              if python3 - <<'PY'
+          import json,sys
+          try:
+              p=json.load(open('/tmp/p.json'))
+          except Exception:
+              sys.exit(1)
+          ok=(
+              p.get('sourceRepository')=='fiverocks-dev/text-vs-color'
+              and p.get('sourceCommit')=='3a80708437510f69a49e167053aaced37504d999'
+              and p.get('pullRequest')==67
+              and p.get('issue')==66
+              and p.get('buildRunId')=='36676733150'
+              and p.get('previewPath')=='/preview/issue-66/'
+          )
+          sys.exit(0 if ok else 1)
+          PY
+              then
+                matched=1
+                break
+              fi
+            fi
             sleep 3
           done
-          curl -L --fail --silent --show-error "${base}DEPLOYMENT_PROVENANCE.json" -o /tmp/p.json
-          python3 - <<'PY'
-          import json
-          p=json.load(open('/tmp/p.json'))
-          assert p['sourceRepository']=='fiverocks-dev/text-vs-color'
-          assert p['sourceCommit']=='3a80708437510f69a49e167053aaced37504d999'
-          assert p['pullRequest']==67 and p['issue']==66
-          assert p['buildRunId']=='36676733150'
-          assert p['previewPath']=='/preview/issue-66/'
-          PY
+          test "$matched" = "1"
+          curl -L --fail --silent --show-error "$base" -o /tmp/index.html
           grep -q '/text-vs-color/preview/issue-66/assets/' /tmp/index.html
-
       - name: Record marker
         run: |
           mkdir -p ops
