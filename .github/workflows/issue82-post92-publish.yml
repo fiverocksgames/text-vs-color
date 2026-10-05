@@ -1,0 +1,47 @@
+name: Publish Issue82 Post92 Preview
+
+on:
+  push:
+    branches:
+      - ops/issue82-post92-publish
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Download exact preview artifact
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error 'https://sdmntprseasia.oaiusercontent.com/files/00000000-c930-8207-991a-da29f3a86131/raw?se=2026-10-05T14%3A25%3A38Z&sp=r&sv=2026-02-06&sr=b&scid=bf1fe5c1-ea75-5a6b-8170-25d415777cda&skoid=fe2e0858-51c5-47e9-acb7-46ebb9a0f396&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-10-05T02%3A10%3A14Z&ske=2026-10-06T02%3A10%3A14Z&sks=b&skv=2026-02-06&sig=wnyFvzIP878mGU/9ys62RUlIHv9O0qUGEUZgSlT7Aqc%3D' -o /tmp/issue82.zip
+          echo '780d4ca9b972c2c6b5ccaad8f8dbd9faa85c11eda578b4a137ea657c4f4dd763  /tmp/issue82.zip' | sha256sum -c -
+          rm -rf /tmp/issue82
+          mkdir -p /tmp/issue82
+          unzip -q /tmp/issue82.zip -d /tmp/issue82
+          test -f /tmp/issue82/index.html
+          test -f /tmp/issue82/DEPLOYMENT_PROVENANCE.json
+          grep -q '729f522eff5919d13a02e5a2f71245c79a923a0c' /tmp/issue82/DEPLOYMENT_PROVENANCE.json
+          grep -q '"/preview/issue-82/"' /tmp/issue82/DEPLOYMENT_PROVENANCE.json
+      - name: Replace only Issue 82 preview
+        run: |
+          set -euo pipefail
+          rm -rf preview/issue-82
+          mkdir -p preview/issue-82
+          cp -R /tmp/issue82/. preview/issue-82/
+          git add preview/issue-82
+          bad="$(git diff --cached --name-only | grep -v '^preview/issue-82/' || true)"
+          test -z "$bad"
+      - name: Commit and publish
+        run: |
+          set -euo pipefail
+          git config user.name "Five Rocks Games"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git diff --cached --quiet && exit 0
+          git commit -m "preview: refresh Issue 82 post-92 candidate"
+          git push origin HEAD:main
