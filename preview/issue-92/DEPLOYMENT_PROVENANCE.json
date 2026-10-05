@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "sourceRepository": "fiverocks-dev/text-vs-color",
+  "sourceCommit": "85c6ddd2d56d49ff73a6791af09a20017eb91ca8",
+  "pullRequest": 95,
+  "issue": 92,
+  "channel": "m4-focus-rush-2x",
+  "previewPath": "/preview/issue-92/",
+  "buildWorkflow": "Issue92 PR95 Exact Head Validation",
+  "buildRunId": "37317171440",
+  "builtAt": "2026-10-05T13:29:40.328158+00:00",
+  "toolchain": "Node 24 / Vite",
+  "files": [
+    {
+      "path": "assets/index-BHceoe1S.js",
+      "sha256": "b5b5a1f0ddc44fcf53054005707bc21276068364adb83b05fd2de6d5e43c1969"
+    },
+    {
+      "path": "assets/index-BkY173cC.css",
+      "sha256": "cc3a58ea35a62da81f24373f344d13d397b5bf5a47a2a5ac3a259616ca32af4f"
+    },
+    {
+      "path": "index.html",
+      "sha256": "574b93f80a65726bcd8c49fa350f93abed258752e44d4e6a95e4452638a115a5"
+    }
+  ]
+}
