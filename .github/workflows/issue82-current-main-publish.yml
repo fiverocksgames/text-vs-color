@@ -1,0 +1,47 @@
+name: Publish Issue82 Current Main Preview
+
+on:
+  push:
+    branches:
+      - ops/issue82-current-main-publish
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Download exact preview artifact
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error 'https://sdmntprjapaneast.oaiusercontent.com/files/00000000-97d4-8209-9acb-b6fed910a048/raw?se=2026-10-05T12%3A34%3A30Z&sp=r&sv=2026-02-06&sr=b&scid=b4c0d79f-f727-5037-bac5-36126a3acdc4&skoid=fe2e0858-51c5-47e9-acb7-46ebb9a0f396&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-10-05T01%3A46%3A10Z&ske=2026-10-06T01%3A46%3A10Z&sks=b&skv=2026-02-06&sig=ZrKRHPkovNZdhMA2rLsT7Xuj%2Br8ZYlRJSlNdCOO1Ww0%3D' -o /tmp/issue82.zip
+          echo '67197410a39db26ab01a296435a469abf0bfb06a496e714564570bd6058d1ddc  /tmp/issue82.zip' | sha256sum -c -
+          rm -rf /tmp/issue82
+          mkdir -p /tmp/issue82
+          unzip -q /tmp/issue82.zip -d /tmp/issue82
+          test -f /tmp/issue82/index.html
+          test -f /tmp/issue82/DEPLOYMENT_PROVENANCE.json
+          grep -q 'af95271ace32ed864ebbc2b8709a5008aa6d124f' /tmp/issue82/DEPLOYMENT_PROVENANCE.json
+          grep -q '"/preview/issue-82/"' /tmp/issue82/DEPLOYMENT_PROVENANCE.json
+      - name: Replace only Issue 82 preview
+        run: |
+          set -euo pipefail
+          rm -rf preview/issue-82
+          mkdir -p preview/issue-82
+          cp -R /tmp/issue82/. preview/issue-82/
+          git add preview/issue-82
+          bad="$(git diff --cached --name-only | grep -v '^preview/issue-82/' || true)"
+          test -z "$bad"
+      - name: Commit and publish
+        run: |
+          set -euo pipefail
+          git config user.name "Five Rocks Games"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git diff --cached --quiet && exit 0
+          git commit -m "preview: publish Issue 82 current main candidate"
+          git push origin HEAD:main
