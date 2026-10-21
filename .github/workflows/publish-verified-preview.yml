@@ -84,7 +84,7 @@ jobs:
               path, digest = item['path'], item['sha256']
               if path in hashes or not re.fullmatch(r'[0-9a-f]{64}', digest):
                   raise SystemExit('Duplicate path or bad digest')
-              if path != 'index.html' and not re.fullmatch(r'assets/[A-Za-z0-9_.-]+\\.(?:js|css)', path):
+              if path != 'index.html' and not re.fullmatch(r'assets/[A-Za-z0-9_.-]+\.(?:js|css)', path):
                   raise SystemExit('Non-static file')
               hashes[path] = digest
           if set(names) != set(hashes) | {provenance_name} or 'index.html' not in hashes or not any(p.endswith('.js') for p in hashes):
