@@ -1,0 +1,129 @@
+name: Publish verified exact-SHA preview
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: write
+jobs:
+  publish:
+    if: >-
+      github.event.issue.number == 1 &&
+      !github.event.issue.pull_request &&
+      github.event.comment.user.login == 'fiverocksgames' &&
+      github.actor == 'fiverocksgames' &&
+      startsWith(github.event.comment.body, '/preview-publish ')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: preview-publisher
+      cancel-in-progress: false
+    steps:
+      - name: Validate exact command
+        env:
+          COMMAND: ${{ github.event.comment.body }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          m = re.fullmatch(r'/preview-publish ([1-9][0-9]*) ([0-9a-f]{40})', os.environ['COMMAND'].strip())
+          if not m:
+              raise SystemExit('Invalid exact preview-publish command')
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f'ARTIFACT_ID={m.group(1)}\nSOURCE_SHA={m.group(2)}\n')
+          PY
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - name: Fetch private source artifact with read-only credential
+        env:
+          SOURCE_READ_TOKEN: ${{ secrets.PREVIEW_SOURCE_READ_TOKEN }}
+        run: |
+          test -n "$SOURCE_READ_TOKEN" || { echo 'Missing PREVIEW_SOURCE_READ_TOKEN'; exit 1; }
+          curl --fail --location --silent --show-error --retry 2 \
+            --header "Authorization: Bearer $SOURCE_READ_TOKEN" \
+            --header "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/fiverocks-dev/text-vs-color/actions/artifacts/$ARTIFACT_ID/zip" \
+            --output /tmp/preview-artifact.zip
+      - name: Verify archive provenance and static allowlist
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, re, zipfile
+          z = zipfile.ZipFile('/tmp/preview-artifact.zip')
+          entries = z.infolist()
+          names = [x.filename for x in entries]
+          if len(names) != len(set(names)) or len(names) > 100:
+              raise SystemExit('Duplicate or excessive ZIP entries')
+          for item in entries:
+              p = pathlib.PurePosixPath(item.filename)
+              if item.is_dir() or p.is_absolute() or '..' in p.parts or '\\' in item.filename:
+                  raise SystemExit('Unsafe ZIP entry')
+              if (item.external_attr >> 16) & 0o170000 == 0o120000:
+                  raise SystemExit('Symlink ZIP entry')
+              if item.file_size > 5_000_000:
+                  raise SystemExit('Oversized ZIP member')
+          if sum(x.file_size for x in entries) > 15_000_000:
+              raise SystemExit('Oversized ZIP archive')
+          provenance_name = 'DEPLOYMENT_PROVENANCE.json'
+          if provenance_name not in names:
+              raise SystemExit('Missing provenance')
+          manifest = json.loads(z.read(provenance_name))
+          required = {
+              'schemaVersion': 1,
+              'sourceRepository': 'fiverocks-dev/text-vs-color',
+              'sourceCommit': os.environ['SOURCE_SHA'],
+              'previewPath': '/preview/',
+              'buildRunId': '39584313817',
+          }
+          for k, v in required.items():
+              if manifest.get(k) != v:
+                  raise SystemExit(f'Provenance mismatch: {k}')
+          declared = manifest.get('files')
+          if not isinstance(declared, list) or not declared:
+              raise SystemExit('Empty provenance file list')
+          hashes = {}
+          for item in declared:
+              path, digest = item['path'], item['sha256']
+              if path in hashes or not re.fullmatch(r'[0-9a-f]{64}', digest):
+                  raise SystemExit('Duplicate path or bad digest')
+              if path != 'index.html' and not re.fullmatch(r'assets/[A-Za-z0-9_.-]+\\.(?:js|css)', path):
+                  raise SystemExit('Non-static file')
+              hashes[path] = digest
+          if set(names) != set(hashes) | {provenance_name} or 'index.html' not in hashes or not any(p.endswith('.js') for p in hashes):
+              raise SystemExit('Unexpected file set')
+          for path, digest in hashes.items():
+              if hashlib.sha256(z.read(path)).hexdigest() != digest:
+                  raise SystemExit(f'Hash mismatch: {path}')
+          html = z.read('index.html').decode('utf-8')
+          for path in re.findall(r'(?:src|href)="([^"]+)"', html):
+              if path.startswith('/'):
+                  if not path.startswith('/text-vs-color/preview/') or path.removeprefix('/text-vs-color/preview/') not in hashes:
+                      raise SystemExit('Unsafe or missing asset URL')
+          root = pathlib.Path('/tmp/verified-preview')
+          root.mkdir()
+          for name in names:
+              (root / name).parent.mkdir(parents=True, exist_ok=True)
+              (root / name).write_bytes(z.read(name))
+          print('Verified exact SHA, provenance, file hashes and static allowlist')
+          PY
+      - name: Stage preview-only changes
+        run: |
+          rm -f preview/index.html preview/DEPLOYMENT_PROVENANCE.json
+          rm -rf preview/assets
+          mkdir -p preview
+          cp -a /tmp/verified-preview/. preview/
+          git add -A -- preview/index.html preview/DEPLOYMENT_PROVENANCE.json preview/assets
+          python3 - <<'PY'
+          import subprocess
+          changed = subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
+          if not changed:
+              raise SystemExit('No preview changes staged')
+          allowed = lambda p: p in ('preview/index.html','preview/DEPLOYMENT_PROVENANCE.json') or p.startswith('preview/assets/')
+          if any(not allowed(p) for p in changed):
+              raise SystemExit('Staged changes outside approved preview subtree')
+          print('Staged verified preview files only')
+          PY
+      - name: Publish preview subtree
+        run: |
+          git config user.name "fiverocks-preview-publisher"
+          git config user.email "163599746+fiverocksgames@users.noreply.github.com"
+          git commit -m "preview: verified source $SOURCE_SHA artifact $ARTIFACT_ID"
+          git push origin HEAD:main
